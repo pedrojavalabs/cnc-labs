@@ -109,7 +109,7 @@ public class MainView extends VerticalLayout {
                 Button b3 = new Button("Download STEP", ev -> getUI().ifPresent(ui -> ui.getPage().open("/download?file="+conv.step())));
                 result.add(new HorizontalLayout(b1,b2,b3));
                 cadViewer.setVisible(true);
-                cadViewer.load("/download?file="+conv.stl().getFileName()); 
+                cadViewer.load("/download?file="+conv.stl(), "/download?file="+conv.dxf()); 
                 result.setVisible(true);
             }catch(Exception ex){ 
                 log.add(new Div(new Text("!! ERROR: "+ex.getMessage()))); 
