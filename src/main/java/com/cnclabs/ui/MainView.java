@@ -66,7 +66,9 @@ public class MainView extends VerticalLayout {
            .set("border","1px solid #333").set("width","100%");
         log.add(new Div(new Text(">> CNC-Labs Cimatron Engine ready. Upload a photo.")));
         
-        VerticalLayout result = new VerticalLayout(); 
+        VerticalLayout result = new VerticalLayout();
+        CadViewer cadViewer = new CadViewer();
+        cadViewer.setVisible(false); 
         result.setVisible(false);
         
         upload.addSucceededListener(e -> {
@@ -105,7 +107,9 @@ public class MainView extends VerticalLayout {
                 Button b1 = new Button("Download DXF", ev -> getUI().ifPresent(ui -> ui.getPage().open("/download?file="+conv.dxf())));
                 Button b2 = new Button("Download STL", ev -> getUI().ifPresent(ui -> ui.getPage().open("/download?file="+conv.stl())));
                 Button b3 = new Button("Download STEP", ev -> getUI().ifPresent(ui -> ui.getPage().open("/download?file="+conv.step())));
-                result.add(new HorizontalLayout(b1,b2,b3)); 
+                result.add(new HorizontalLayout(b1,b2,b3));
+                cadViewer.setVisible(true);
+                cadViewer.load("/download?file="+conv.stl().getFileName()); 
                 result.setVisible(true);
             }catch(Exception ex){ 
                 log.add(new Div(new Text("!! ERROR: "+ex.getMessage()))); 
@@ -116,6 +120,6 @@ public class MainView extends VerticalLayout {
         
         HorizontalLayout controls = new HorizontalLayout(mode, height, tol); 
         controls.setAlignItems(Alignment.BASELINE);
-        add(title, new Hr(), upload, controls, progress, log, result);
+        add(title, new Hr(), upload, controls, progress, log, result, cadViewer);
     }
 }
