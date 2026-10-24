@@ -43,8 +43,7 @@ public class CimatronConversionService {
     }
     private void writeDXF(List<List<int[]>> contours, Path out) throws IOException {
         try(BufferedWriter w = Files.newBufferedWriter(out)){
-            w.write("0\nSECTION\n2\nHEADER\n0\nENDSEC\n");
-            w.write("0\nSECTION\n2\nENTITIES\n");
+            w.write("0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n");
             for(List<int[]> c: contours){
                 w.write("0\nLWPOLYLINE\n8\nCIMATRON_PROFILE\n90\n"+c.size()+"\n70\n1\n");
                 for(int[] p:c){ w.write(String.format("10\n%.4f\n20\n%.4f\n", p[0]*0.1, p[1]*0.1)); }
