@@ -1,8 +1,9 @@
 package com.cnclabs.ui;
 
 import com.cnclabs.service.CadConversionService;
-import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.details.Details;
+import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.html.*;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -37,22 +38,27 @@ public class MainView extends VerticalLayout {
         ProgressBar progress = new ProgressBar();
         progress.setVisible(false);
 
-        // LOG - half height, simple
-        Div log = new Div();
-        log.getStyle().set("font-family","monospace").set("background","#151515")
+        // LOG - collapsible, half height
+        Div logContent = new Div();
+        logContent.getStyle().set("font-family","monospace").set("background","#151515")
                 .set("padding","12px").set("height","110px").set("overflow","auto")
                 .set("border","1px solid #333").set("width","100%")
-                .set("border-radius","8px").set("color","#888").set("font-size","12px");
-        log.add(new Div(new Text(">> CNC-Labs ready. Upload a photo.")));
+                .set("border-radius","0 0 8px 8px").set("color","#888").set("font-size","12px");
+        logContent.add(new Div(new Text(">> CNC-Labs ready. Upload a photo.")));
+
+        Details logDetails = new Details("CONSOLE LOG (collapsed)", logContent);
+        logDetails.setOpened(false);
+        logDetails.getStyle().set("width","100%").set("background","#1a1a1a").set("border","1px solid #333").set("border-radius","8px");
 
         VerticalLayout result = new VerticalLayout();
         result.setVisible(false);
 
+        // SIMPLE VIEWER - iframe, no JS in Java
         CadViewerSimple viewer = new CadViewerSimple();
         viewer.setVisible(false);
 
         HorizontalLayout controls = new HorizontalLayout(convertBtn);
-        add(title, new Hr(), upload, controls, progress, log, result, viewer);
+        add(title, new Hr(), upload, controls, progress, logDetails, result, viewer);
 
         convertBtn.addClickListener(e -> {
             try {
@@ -63,7 +69,7 @@ public class MainView extends VerticalLayout {
                 Files.copy(is, tmp, StandardCopyOption.REPLACE_EXISTING);
 
                 progress.setVisible(true);
-                log.add(new Div(new Text(">> Converting: " + fileName)));
+                logContent.add(new Div(new Text(">> Converting: " + fileName)));
 
                 var conv = service.convert(tmp);
 
@@ -77,7 +83,7 @@ public class MainView extends VerticalLayout {
                 }), "Download DXF");
                 dxfLink.getElement().setAttribute("download", true);
 
-                Anchor viewerLink = new Anchor("/viewer.html?file=/download?file=" + conv.stl().getFileName(), "Open in full viewer");
+                Anchor viewerLink = new Anchor("/viewer.html?stl=" + conv.stl().getFileName(), "Open in full viewer");
                 viewerLink.setTarget("_blank");
 
                 result.removeAll();
@@ -85,13 +91,14 @@ public class MainView extends VerticalLayout {
                 result.setVisible(true);
 
                 viewer.setVisible(true);
-                viewer.load("/download?file=" + conv.stl().getFileName(), "/download?file=" + conv.dxf().getFileName());
+                viewer.load(conv.stl().getFileName().toString(), conv.dxf().getFileName().toString());
 
-                log.add(new Div(new Text(">> Done: " + conv.stl().getFileName())));
+                logContent.add(new Div(new Text(">> Done: " + conv.stl().getFileName())));
                 progress.setVisible(false);
+                logDetails.setOpened(true);
 
             } catch (Exception ex) {
-                log.add(new Div(new Text(">> Error: " + ex.getMessage())));
+                logContent.add(new Div(new Text(">> Error: " + ex.getMessage())));
                 progress.setVisible(false);
             }
         });

@@ -15,13 +15,10 @@ public class CadViewerSimple extends Div {
         iframe = new IFrame();
         iframe.setWidthFull();
         iframe.getStyle().set("height","100%").set("border","none");
-        iframe.setId("cad-iframe");
-
         add(iframe);
     }
 
-    public void load(String stlUrl, String dxfUrl) {
-        // Load viewer.html with stl param
-        iframe.setSrc("/viewer.html?file=" + stlUrl);
+    public void load(String stlFile, String dxfFile) {
+        iframe.setSrc("/viewer.html?stl=" + stlFile);
     }
 }
