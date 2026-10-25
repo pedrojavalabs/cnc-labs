@@ -5,7 +5,6 @@ import '@vaadin/progress-bar/theme/lumo/vaadin-progress-bar.js';
 import '@vaadin/horizontal-layout/theme/lumo/vaadin-horizontal-layout.js';
 import '@vaadin/button/theme/lumo/vaadin-button.js';
 import 'Frontend/generated/jar-resources/buttonFunctions.js';
-import '@vaadin/details/theme/lumo/vaadin-details.js';
 import '@vaadin/vertical-layout/theme/lumo/vaadin-vertical-layout.js';
 import '@vaadin/common-frontend/ConnectionIndicator.js';
 import '@vaadin/vaadin-lumo-styles/sizing.js';
