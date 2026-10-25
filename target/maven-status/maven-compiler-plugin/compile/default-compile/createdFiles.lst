@@ -1,4 +1,3 @@
-com\cnclabs\controller\DownloadController.class
 com\cnclabs\CncLabsApplication.class
 com\cnclabs\ui\CadViewer.class
 com\cnclabs\model\ConversionResult.class

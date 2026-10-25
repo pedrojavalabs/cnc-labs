@@ -1,6 +1,8 @@
 package com.cnclabs.ui;
 
 import com.cnclabs.service.CadConversionService;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.html.*;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -19,108 +21,86 @@ import java.nio.file.*;
 public class MainView extends VerticalLayout {
 
     private final CadConversionService service;
-    private final Div log;
-    private final VerticalLayout result;
-    private final CadViewerSimple viewer;
-    private final ProgressBar progress;
-    private final Image preview;
 
     public MainView(@Autowired CadConversionService service) {
         this.service = service;
         setPadding(true);
         setSpacing(true);
 
-        H1 title = new H1("CNC LABS // Cimatron - AUTO");
+        H1 title = new H1("CNC LABS // Cimatron");
         title.getStyle().set("font-family","monospace").set("color","#d4ff00");
 
         MemoryBuffer buffer = new MemoryBuffer();
         Upload upload = new Upload(buffer);
         upload.setAcceptedFileTypes("image/*");
-        upload.setMaxFiles(1);
-        upload.setDropLabel(new Span("Drop image here - auto converts"));
 
-        progress = new ProgressBar();
-        progress.setIndeterminate(true);
+        Button convertBtn = new Button("CONVERT");
+        ProgressBar progress = new ProgressBar();
         progress.setVisible(false);
 
-        // Image preview
-        preview = new Image();
-        preview.setWidth("300px");
-        preview.getStyle().set("border","1px solid #333").set("border-radius","8px");
-        preview.setVisible(false);
-
-        // LOG - half height
-        log = new Div();
-        log.getStyle().set("font-family","monospace").set("background","#151515")
+        // LOG - collapsible, half height
+        Div logContent = new Div();
+        logContent.getStyle().set("font-family","monospace").set("background","#151515")
                 .set("padding","12px").set("height","110px").set("overflow","auto")
                 .set("border","1px solid #333").set("width","100%")
-                .set("border-radius","8px").set("color","#888").set("font-size","12px");
-        log.add(new Div(new Text(">> Ready - upload image, auto-converts to STL/DXF")));
+                .set("border-radius","0 0 8px 8px").set("color","#888").set("font-size","12px");
+        logContent.add(new Div(new Text(">> CNC-Labs ready. Upload a photo.")));
 
-        result = new VerticalLayout();
+        Details logDetails = new Details("CONSOLE LOG (collapsed)", logContent);
+        logDetails.setOpened(false);
+        logDetails.getStyle().set("width","100%").set("background","#1a1a1a").set("border","1px solid #333").set("border-radius","8px");
+
+        VerticalLayout result = new VerticalLayout();
         result.setVisible(false);
 
-        viewer = new CadViewerSimple();
+        // SIMPLE VIEWER - iframe, no JS in Java
+        CadViewerSimple viewer = new CadViewerSimple();
         viewer.setVisible(false);
 
-        add(title, new Hr(), upload, preview, progress, log, result, viewer);
+        HorizontalLayout controls = new HorizontalLayout(convertBtn);
+        add(title, new Hr(), upload, controls, progress, logDetails, result, viewer);
 
-        upload.addSucceededListener(event -> {
+        convertBtn.addClickListener(e -> {
             try {
-                String fileName = event.getFileName();
+                String fileName = buffer.getFileName();
+                if (fileName == null || fileName.isEmpty()) return;
                 InputStream is = buffer.getInputStream();
                 Path tmp = Files.createTempFile("upload-", fileName);
                 Files.copy(is, tmp, StandardCopyOption.REPLACE_EXISTING);
 
-                // Show image preview
-                StreamResource imgRes = new StreamResource(fileName, () -> {
-                    try { return Files.newInputStream(tmp); } catch (Exception e){ return null; }
-                });
-                preview.setSrc(imgRes);
-                preview.setVisible(true);
+                progress.setVisible(true);
+                logContent.add(new Div(new Text(">> Converting: " + fileName)));
 
-                autoConvert(fileName, tmp);
+                var conv = service.convert(tmp);
+
+                Anchor stlLink = new Anchor(new StreamResource(conv.stl().getFileName().toString(), () -> {
+                    try { return Files.newInputStream(conv.stl()); } catch (Exception ex) { return null; }
+                }), "Download STL");
+                stlLink.getElement().setAttribute("download", true);
+
+                Anchor dxfLink = new Anchor(new StreamResource(conv.dxf().getFileName().toString(), () -> {
+                    try { return Files.newInputStream(conv.dxf()); } catch (Exception ex) { return null; }
+                }), "Download DXF");
+                dxfLink.getElement().setAttribute("download", true);
+
+                Anchor viewerLink = new Anchor("/viewer.html?file=/download?file=" + conv.stl().getFileName(), "Open in full viewer");
+                viewerLink.setTarget("_blank");
+
+                result.removeAll();
+                result.add(new HorizontalLayout(stlLink, dxfLink, viewerLink));
+                result.setVisible(true);
+
+                viewer.setVisible(true);
+                viewer.load("/download?file=" + conv.stl().getFileName(), "/download?file=" + conv.dxf().getFileName());
+
+                logContent.add(new Div(new Text(">> Done: " + conv.stl().getFileName())));
+                progress.setVisible(false);
+                logDetails.setOpened(true);
 
             } catch (Exception ex) {
-                log.add(new Div(new Text(">> Error: " + ex.getMessage())));
+                logContent.add(new Div(new Text(">> Error: " + ex.getMessage())));
+                progress.setVisible(false);
             }
         });
-    }
-
-    private void autoConvert(String fileName, Path tmpFile) {
-        try {
-            progress.setVisible(true);
-            log.add(new Div(new Text(">> Auto-converting: " + fileName)));
-
-            var conv = service.convert(tmpFile);
-
-            Anchor stlLink = new Anchor(new StreamResource(conv.stl().getFileName().toString(), () -> {
-                try { return Files.newInputStream(conv.stl()); } catch (Exception ex) { return null; }
-            }), "Download STL");
-            stlLink.getElement().setAttribute("download", true);
-            stlLink.getStyle().set("color","#d4ff00");
-
-            Anchor dxfLink = new Anchor(new StreamResource(conv.dxf().getFileName().toString(), () -> {
-                try { return Files.newInputStream(conv.dxf()); } catch (Exception ex) { return null; }
-            }), "Download DXF");
-
-            Anchor viewerLink = new Anchor("/viewer.html?stl=" + conv.stl().getFileName(), "Open full viewer");
-            viewerLink.setTarget("_blank");
-            viewerLink.getStyle().set("color","#fff");
-
-            result.removeAll();
-            result.add(new H4("Converted: " + conv.stl().getFileName()), new HorizontalLayout(stlLink, dxfLink, viewerLink));
-            result.setVisible(true);
-
-            viewer.setVisible(true);
-            viewer.load(conv.stl().getFileName().toString(), conv.dxf().getFileName().toString());
-
-            log.add(new Div(new Text(">> Done: " + conv.stl().getFileName() + " - viewer loaded")));
-            progress.setVisible(false);
-
-        } catch (Exception ex) {
-            log.add(new Div(new Text(">> Error: " + ex.getMessage())));
-            progress.setVisible(false);
-        }
     }
 }
