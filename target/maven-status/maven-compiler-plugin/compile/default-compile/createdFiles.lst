@@ -1,8 +1,10 @@
 com\cnclabs\controller\DownloadController.class
 com\cnclabs\CncLabsApplication.class
 com\cnclabs\ui\CadViewer.class
+com\cnclabs\model\ConversionResult.class
 com\cnclabs\service\CimatronConversionService.class
-com\cnclabs\repo\ConversionJobRepository.class
+com\cnclabs\ui\CadViewerSimple.class
+com\cnclabs\ui\DownloadController.class
 com\cnclabs\ui\MainView.class
-com\cnclabs\entity\ConversionJob.class
+com\cnclabs\service\CadConversionService.class
 com\cnclabs\service\CimatronConversionService$ConversionResult.class

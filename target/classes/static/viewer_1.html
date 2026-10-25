@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"><title>CNC LABS Viewer</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<style>
+body{margin:0;background:#0a0a0a;color:#e0e0e0;font-family:monospace;overflow:hidden}
+#c{width:100vw;height:100vh}
+.bar{position:absolute;bottom:12px;left:12px;display:flex;gap:8px;z-index:10}
+button{background:#222;color:#d4ff00;border:1px solid #333;padding:6px 12px;border-radius:6px;cursor:pointer;font-family:monospace}
+button.primary{background:#d4ff00;color:#000;font-weight:bold;border:none}
+#top{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);padding:6px 10px;border-radius:6px;color:#d4ff00;font-size:12px;z-index:10}
+#status{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#666}
+</style>
+</head>
+<body>
+<div id="top">CNC LABS // STL VIEWER - <span id="fname">no file</span></div>
+<div id="c"></div>
+<div id="status">Loading viewer...</div>
+<div class="bar">
+  <button id="wire">WIREFRAME</button>
+  <button id="fit" class="primary">FIT VIEW</button>
+  <button id="topv">TOP</button>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container=document.getElementById('c');
+const status=document.getElementById('status');
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0a0a0a);
+const camera=new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 2000);
+camera.position.set(60,40,80);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+container.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,0.7));
+const d1=new THREE.DirectionalLight(0xffffff,1); d1.position.set(50,100,50); scene.add(d1);
+const grid=new THREE.GridHelper(200,40,0x333333,0x222222); scene.add(grid);
+const controls=new OrbitControls(camera, renderer.domElement); controls.enableDamping=true;
+let mesh=null;
+
+function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); }
+animate();
+
+window.addEventListener('resize', ()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+function loadSTL(fileName){
+  const url = '/download?file=' + encodeURIComponent(fileName);
+  document.getElementById('fname').textContent=fileName;
+  status.textContent='Loading '+fileName+'...';
+  status.style.display='block';
+  new STLLoader().load(url, (g)=>{
+    g.computeVertexNormals();
+    g.center();
+    if(mesh) scene.remove(mesh);
+    mesh=new THREE.Mesh(g, new THREE.MeshStandardMaterial({color:0xe0e0e0, metalness:0.1, roughness:0.6}));
+    scene.add(mesh);
+    const box=new THREE.Box3().setFromObject(mesh);
+    const center=box.getCenter(new THREE.Vector3());
+    const size=box.getSize(new THREE.Vector3()).length();
+    controls.target.copy(center);
+    camera.position.copy(center).add(new THREE.Vector3(size*0.6, size*0.4, size*0.6));
+    controls.update();
+    status.style.display='none';
+    console.log('STL loaded', fileName);
+  }, undefined, (err)=>{
+    status.textContent='Failed to load: '+err.message;
+    console.error(err);
+  });
+}
+
+document.getElementById('wire').onclick=()=>{ if(mesh) mesh.material.wireframe=!mesh.material.wireframe; };
+document.getElementById('fit').onclick=()=>{ if(mesh){ const b=new THREE.Box3().setFromObject(mesh); controls.target.copy(b.getCenter(new THREE.Vector3())); controls.update(); }};
+document.getElementById('topv').onclick=()=>{ if(mesh){ const b=new THREE.Box3().setFromObject(mesh); const c=b.getCenter(new THREE.Vector3()); controls.target.copy(c); camera.position.set(c.x, c.y+100, c.z); controls.update(); } else { camera.position.set(0,150,0); controls.target.set(0,0,0); }};
+
+const params=new URLSearchParams(location.search);
+const stl=params.get('stl');
+if(stl){ loadSTL(stl); } else { status.textContent='No file - use ?stl=filename.stl'; }
+
+window.loadSTL=loadSTL;
+</script>
+</body>
+</html>

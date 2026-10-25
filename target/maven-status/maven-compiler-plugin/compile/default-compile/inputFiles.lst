@@ -1,7 +1,9 @@
 C:\!DEV\cnc-labs\src\main\java\com\cnclabs\service\CimatronConversionService.java
 C:\!DEV\cnc-labs\src\main\java\com\cnclabs\CncLabsApplication.java
 C:\!DEV\cnc-labs\src\main\java\com\cnclabs\ui\CadViewer.java
+C:\!DEV\cnc-labs\src\main\java\com\cnclabs\service\CadConversionService.java
 C:\!DEV\cnc-labs\src\main\java\com\cnclabs\ui\MainView.java
-C:\!DEV\cnc-labs\src\main\java\com\cnclabs\repo\ConversionJobRepository.java
-C:\!DEV\cnc-labs\src\main\java\com\cnclabs\entity\ConversionJob.java
+C:\!DEV\cnc-labs\src\main\java\com\cnclabs\model\ConversionResult.java
+C:\!DEV\cnc-labs\src\main\java\com\cnclabs\ui\CadViewerSimple.java
 C:\!DEV\cnc-labs\src\main\java\com\cnclabs\controller\DownloadController.java
+C:\!DEV\cnc-labs\src\main\java\com\cnclabs\ui\DownloadController.java
