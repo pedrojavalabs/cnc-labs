@@ -1,90 +1,160 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8"><title>CNC LABS Viewer</title>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNC LABS — CAD Viewer</title>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
 <style>
-body{margin:0;background:#0a0a0a;color:#e0e0e0;font-family:monospace;overflow:hidden}
-#c{width:100vw;height:100vh}
-.bar{position:absolute;bottom:12px;left:12px;display:flex;gap:8px;z-index:10}
-button{background:#222;color:#d4ff00;border:1px solid #333;padding:6px 12px;border-radius:6px;cursor:pointer;font-family:monospace}
-button.primary{background:#d4ff00;color:#000;font-weight:bold;border:none}
-#top{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);padding:6px 10px;border-radius:6px;color:#d4ff00;font-size:12px;z-index:10}
-#status{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#666}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#e0e0e0;font-family:ui-monospace,monospace}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #222;background:#111;position:sticky;top:0;z-index:100}
+.logo{font-weight:900;letter-spacing:2px} .logo span{color:#d4ff00}
+.btn{background:#222;color:#fff;border:1px solid #333;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:inherit}
+.btn-primary{background:#d4ff00;color:#000;border:none;font-weight:700}
+.wrap{display:grid;grid-template-columns:1fr 360px;height:calc(100vh - 58px)}
+.view{position:relative;background:radial-gradient(#1a1a1a,#0a0a0a)}
+#canvas3d{width:100%;height:100%;display:block}
+#canvas2d{width:100%;height:100%;background:#fafafa;display:none}
+.panel{background:#111;border-left:1px solid #222;padding:16px;overflow:auto}
+h3{font-size:11px;letter-spacing:1px;color:#888;margin-bottom:8px}
+.stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1a1a1a;font-size:12px}
+.tabs{display:flex;gap:0;border-bottom:1px solid #222;margin-bottom:12px}
+.tab{padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;font-size:12px}
+.tab.active{border-color:#d4ff00;color:#d4ff00}
+.drop{border:1px dashed #333;border-radius:12px;padding:20px;text-align:center;color:#666;margin-bottom:16px}
 </style>
 </head>
 <body>
-<div id="top">CNC LABS // STL VIEWER - <span id="fname">no file</span></div>
-<div id="c"></div>
-<div id="status">Loading viewer...</div>
-<div class="bar">
-  <button id="wire">WIREFRAME</button>
-  <button id="fit" class="primary">FIT VIEW</button>
-  <button id="topv">TOP</button>
+<header>
+<div class="logo">CNC <span>LABS</span> — CAD VIEWER // STL + DXF + STEP</div>
+<div style="display:flex;gap:8px">
+<input type="file" id="file" accept=".stl,.dxf,.step,.stp" hidden>
+<button class="btn" onclick="document.getElementById('file').click()">OPEN FILE</button>
+<a class="btn btn-primary" href="/" style="text-decoration:none">BACK TO APP</a>
 </div>
+</header>
+<div class="wrap">
+<div class="view">
+<canvas id="canvas3d"></canvas>
+<canvas id="canvas2d"></canvas>
+<div style="position:absolute;bottom:16px;left:16px;display:flex;gap:8px">
+<button class="btn" id="wire">WIREFRAME</button>
+<button class="btn btn-primary" id="fit">FIT</button>
+<button class="btn" id="top">TOP</button>
+<button class="btn" id="toggle">2D / 3D</button>
+</div>
+</div>
+<div class="panel">
+<div class="tabs"><div class="tab active" id="tab-info">INFO</div><div class="tab" id="tab-dxf">DXF</div></div>
+<div class="drop" id="drop">Drop STL / DXF here or click OPEN FILE</div>
+<h3>FILE</h3>
+<div class="stat"><span>Name</span><span id="fname">—</span></div>
+<div class="stat"><span>Size</span><span id="fsize">—</span></div>
+<div class="stat"><span>Triangles</span><span id="tris">—</span></div>
+<h3 style="margin-top:16px">ACTIONS</h3>
+<button class="btn" style="width:100%;margin-top:8px" onclick="downloadSTL()">EXPORT STL</button>
+<pre id="log" style="margin-top:16px;background:#0a0a0a;padding:10px;border-radius:8px;font-size:10px;color:#888;max-height:200px;overflow:auto"></pre>
+</div>
+</div>
+
 <script type="module">
 import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const container=document.getElementById('c');
-const status=document.getElementById('status');
-const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0a0a0a);
-const camera=new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 2000);
-camera.position.set(60,40,80);
-const renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-container.appendChild(renderer.domElement);
-scene.add(new THREE.AmbientLight(0xffffff,0.7));
-const d1=new THREE.DirectionalLight(0xffffff,1); d1.position.set(50,100,50); scene.add(d1);
-const grid=new THREE.GridHelper(200,40,0x333333,0x222222); scene.add(grid);
-const controls=new OrbitControls(camera, renderer.domElement); controls.enableDamping=true;
+const canvas = document.getElementById('canvas3d');
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0a0a0a);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 2000); camera.position.set(60,40,80);
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true}); 
+const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping=true;
+scene.add(new THREE.AmbientLight(0xffffff,0.6));
+let dir = new THREE.DirectionalLight(0xffffff,1); dir.position.set(50,100,50); scene.add(dir);
+let dir2 = new THREE.DirectionalLight(0xd4ff00,0.4); dir2.position.set(-50,-20,-50); scene.add(dir2);
+scene.add(new THREE.GridHelper(200,40,0x333333,0x222222));
 let mesh=null;
 
-function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); }
-animate();
+function resize(){ const r=canvas.parentElement.getBoundingClientRect(); renderer.setSize(r.width,r.height); camera.aspect=r.width/r.height; camera.updateProjectionMatrix(); }
+window.addEventListener('resize', resize); resize();
 
-window.addEventListener('resize', ()=>{
-  camera.aspect=window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); } animate();
 
-function loadSTL(fileName){
-  const url = '/download?file=' + encodeURIComponent(fileName);
-  document.getElementById('fname').textContent=fileName;
-  status.textContent='Loading '+fileName+'...';
-  status.style.display='block';
-  new STLLoader().load(url, (g)=>{
-    g.computeVertexNormals();
-    g.center();
+function loadSTL(buffer, name){
+    const geom = new STLLoader().parse(buffer);
+    geom.computeVertexNormals(); geom.center();
     if(mesh) scene.remove(mesh);
-    mesh=new THREE.Mesh(g, new THREE.MeshStandardMaterial({color:0xe0e0e0, metalness:0.1, roughness:0.6}));
-    scene.add(mesh);
-    const box=new THREE.Box3().setFromObject(mesh);
-    const center=box.getCenter(new THREE.Vector3());
-    const size=box.getSize(new THREE.Vector3()).length();
-    controls.target.copy(center);
-    camera.position.copy(center).add(new THREE.Vector3(size*0.6, size*0.4, size*0.6));
-    controls.update();
-    status.style.display='none';
-    console.log('STL loaded', fileName);
-  }, undefined, (err)=>{
-    status.textContent='Failed to load: '+err.message;
-    console.error(err);
-  });
+    const mat = new THREE.MeshStandardMaterial({color:0xe0e0e0, metalness:0.2, roughness:0.6});
+    mesh = new THREE.Mesh(geom, mat); scene.add(mesh);
+    const box = new THREE.Box3().setFromObject(mesh); const center=box.getCenter(new THREE.Vector3()); const size=box.getSize(new THREE.Vector3()).length();
+    controls.target.copy(center); camera.position.copy(center).add(new THREE.Vector3(size*0.6,size*0.4,size*0.6)); controls.update();
+    document.getElementById('tris').textContent = (geom.attributes.position.count/3).toLocaleString();
+    log('STL loaded: '+name);
 }
 
+async function loadDXF(text){
+    const canvas2d = document.getElementById('canvas2d');
+    canvas2d.style.display='block'; canvas.style.display='none';
+    const {default: DxfParser} = await import('https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/+esm');
+    const parser=new DxfParser(); const dxf=parser.parseSync(text);
+    const ctx=canvas2d.getContext('2d'); const dpr=window.devicePixelRatio||1;
+    const rect=canvas2d.parentElement.getBoundingClientRect();
+    canvas2d.width=rect.width*dpr; canvas2d.height=rect.height*dpr; canvas2d.style.width=rect.width+'px'; canvas2d.style.height=rect.height+'px'; ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,rect.width,rect.height); ctx.fillStyle='#fafafa'; ctx.fillRect(0,0,rect.width,rect.height);
+    // bounds calc
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    (dxf.entities||[]).forEach(e=>{
+        if(e.vertices) e.vertices.forEach(v=>{minX=Math.min(minX,v.x); minY=Math.min(minY,v.y); maxX=Math.max(maxX,v.x); maxY=Math.max(maxY,v.y);});
+        if(e.start){minX=Math.min(minX,e.start.x,e.end.x); maxX=Math.max(maxX,e.start.x,e.end.x); minY=Math.min(minY,e.start.y,e.end.y); maxY=Math.max(maxY,e.start.y,e.end.y);}
+        if(e.center){minX=Math.min(minX,e.center.x-e.radius); maxX=Math.max(maxX,e.center.x+e.radius); minY=Math.min(minY,e.center.y-e.radius); maxY=Math.max(maxY,e.center.y+e.radius);}
+    });
+    if(!isFinite(minX)){minX=-100;maxX=100;minY=-100;maxY=100;}
+    const pad=30; const w=rect.width-pad*2; const h=rect.height-pad*2;
+    const scale=Math.min(w/(maxX-minX||100), h/(maxY-minY||100))*0.9;
+    const ox=pad+(w-(maxX-minX)*scale)/2 - minX*scale;
+    const oy=pad+(h-(maxY-minY)*scale)/2 - minY*scale + (maxY-minY)*scale;
+    const tx=x=>ox+x*scale; const ty=y=>oy - y*scale;
+    ctx.strokeStyle='#111'; ctx.lineWidth=1;
+    (dxf.entities||[]).forEach(e=>{
+        ctx.beginPath();
+        if(e.type==='LINE'){ctx.moveTo(tx(e.start.x),ty(e.start.y)); ctx.lineTo(tx(e.end.x),ty(e.end.y));}
+        else if(e.type==='LWPOLYLINE'||e.type==='POLYLINE'){ e.vertices?.forEach((v,i)=>{ if(i===0) ctx.moveTo(tx(v.x),ty(v.y)); else ctx.lineTo(tx(v.x),ty(v.y)); }); if(e.shape) ctx.closePath();}
+        else if(e.type==='CIRCLE'){ ctx.arc(tx(e.center.x),ty(e.center.y), e.radius*scale, 0, Math.PI*2); }
+        else if(e.type==='ARC'){ ctx.arc(tx(e.center.x),ty(e.center.y), e.radius*scale, -e.endAngle, -e.startAngle); }
+        ctx.stroke();
+    });
+    log('DXF loaded: '+(dxf.entities?.length||0)+' entities');
+}
+
+function log(m){ const el=document.getElementById('log'); el.textContent='['+new Date().toLocaleTimeString()+'] '+m+'\n'+el.textContent; }
+function handleFile(f){
+    document.getElementById('fname').textContent=f.name;
+    document.getElementById('fsize').textContent=(f.size/1024).toFixed(1)+' KB';
+    const ext=f.name.split('.').pop().toLowerCase();
+    if(ext==='stl'){ f.arrayBuffer().then(b=>loadSTL(b,f.name)); }
+    else if(ext==='dxf'){ f.text().then(t=>loadDXF(t)); }
+    else { log('Unsupported: '+ext+' (STL/DXF only in this viewer, STEP needs server conversion)'); }
+}
+
+document.getElementById('file').addEventListener('change', e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
+const drop=document.getElementById('drop');
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.style.borderColor='#d4ff00'; });
+drop.addEventListener('dragleave', ()=>drop.style.borderColor='#333');
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.style.borderColor='#333'; if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
 document.getElementById('wire').onclick=()=>{ if(mesh) mesh.material.wireframe=!mesh.material.wireframe; };
-document.getElementById('fit').onclick=()=>{ if(mesh){ const b=new THREE.Box3().setFromObject(mesh); controls.target.copy(b.getCenter(new THREE.Vector3())); controls.update(); }};
-document.getElementById('topv').onclick=()=>{ if(mesh){ const b=new THREE.Box3().setFromObject(mesh); const c=b.getCenter(new THREE.Vector3()); controls.target.copy(c); camera.position.set(c.x, c.y+100, c.z); controls.update(); } else { camera.position.set(0,150,0); controls.target.set(0,0,0); }};
+document.getElementById('fit').onclick=()=>{ if(mesh){ const b=new THREE.Box3().setFromObject(mesh); controls.target.copy(b.getCenter(new THREE.Vector3())); controls.update(); } };
+document.getElementById('top').onclick=()=>{ camera.position.set(0,150,0); controls.target.set(0,0,0); controls.update(); };
+document.getElementById('toggle').onclick=()=>{
+    const c2=document.getElementById('canvas2d'); const c3=document.getElementById('canvas3d');
+    if(c2.style.display==='none'){ c2.style.display='block'; c3.style.display='none'; } else { c2.style.display='none'; c3.style.display='block'; resize(); }
+};
 
+// Auto-load from query ?file=/download?file=xyz.stl
 const params=new URLSearchParams(location.search);
-const stl=params.get('stl');
-if(stl){ loadSTL(stl); } else { status.textContent='No file - use ?stl=filename.stl'; }
-
-window.loadSTL=loadSTL;
+const fileParam=params.get('file');
+if(fileParam){ fetch(fileParam).then(r=>r.arrayBuffer()).then(b=>loadSTL(b,fileParam)).catch(()=>log('Failed to load '+fileParam)); }
 </script>
 </body>
 </html>
