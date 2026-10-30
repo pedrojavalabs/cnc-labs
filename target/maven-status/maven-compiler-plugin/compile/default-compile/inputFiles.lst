@@ -1,8 +1,6 @@
-C:\!DEV\cnc-labs\src\main\java\com\cnclabs\service\CimatronConversionService.java
-C:\!DEV\cnc-labs\src\main\java\com\cnclabs\CncLabsApplication.java
-C:\!DEV\cnc-labs\src\main\java\com\cnclabs\ui\CadViewer.java
-C:\!DEV\cnc-labs\src\main\java\com\cnclabs\service\CadConversionService.java
-C:\!DEV\cnc-labs\src\main\java\com\cnclabs\ui\MainView.java
-C:\!DEV\cnc-labs\src\main\java\com\cnclabs\model\ConversionResult.java
-C:\!DEV\cnc-labs\src\main\java\com\cnclabs\ui\CadViewerSimple.java
-C:\!DEV\cnc-labs\src\main\java\com\cnclabs\ui\DownloadController.java
+C:\!DEV\cnc-labs\src\main\java\com\example\cad\Application.java
+C:\!DEV\cnc-labs\src\main\java\com\example\cad\CadModel.java
+C:\!DEV\cnc-labs\src\main\java\com\example\cad\CadModelRepository.java
+C:\!DEV\cnc-labs\src\main\java\com\example\cad\CadViewer.java
+C:\!DEV\cnc-labs\src\main\java\com\example\cad\MainView.java
+C:\!DEV\cnc-labs\src\main\java\com\example\cad\OutlineExtruder.java
